@@ -1,0 +1,35 @@
+/* 수궁도 — 전역 스타일. 캔버스는 1280×800 고정 좌표계를 CSS로 창에 맞춰 스케일/레터박스 */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #d8d2c8;            /* 레터박스(여백) 색 — 베이지 톤과 이어지게 */
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+canvas {
+  display: block;
+  /* 너비/높이는 sketch.js fitCanvas()가 창 크기에 맞춰 설정 (종횡비 유지) */
+  box-shadow: 0 0 40px rgba(0,0,0,0.15);
+}
+
+/* DOM 입력(닉네임/시간) — 이후 단계에서 사용. 폰트만 미리 등록 */
+@font-face {
+  font-family: 'SolmoeKimDaeGeon';
+  src: url('글꼴 모음/솔뫼 김대건OTF Medium.otf') format('opentype');
+}
+@font-face {
+  font-family: 'MapoGoldenPier';
+  src: url('글꼴 모음/MapoGoldenPier.otf') format('opentype');
+}
+@font-face {
+  font-family: 'MapoFlowerIsland';
+  src: url('글꼴 모음/MapoFlowerIsland.otf') format('opentype');
+}
+
+input, button {
+  font-family: 'MapoFlowerIsland', sans-serif;
+}
