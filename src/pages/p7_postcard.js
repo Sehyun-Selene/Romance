@@ -9,6 +9,7 @@ const P7 = {
   buf: null,       // p5.Graphics — 최종 엽서 버퍼
   inited: false,
   saved: false,    // 저장 완료 플래그
+  shareEl: null,   // 공유 오버레이 DOM
 };
 
 function p7Reset() {
@@ -115,22 +116,64 @@ function drawPage7() {
   const ey    = 120;
   if (P7.buf) image(P7.buf, ex, ey, dispW, dispH);
 
-  // 하단 버튼
+  // 하단 버튼 3개
   const BY = ey + dispH + 36;
-  drawButton('엽서집에 저장하기', DW / 2 - 140, BY, 220, 48, p7Save);
-  drawButton('처음 화면으로',     DW / 2 + 130, BY, 180, 48, () => { resetSession(); goTo(1); });
+  drawButton('엽서집에 저장하기', DW / 2 - 330, BY, 210, 48, p7Save);
+  drawButton('링크 가져가기',     DW / 2,       BY, 200, 48, p7ShowShare);
+  drawButton('처음 화면으로',     DW / 2 + 320, BY, 190, 48, () => { p7HideShare(); resetSession(); goTo(1); });
 
   if (P7.saved) {
     push();
     fill(COLORS.ink); textFont(fontBody); textSize(14); textAlign(CENTER, CENTER);
-    text('엽서집에 저장됐어요 ✓', DW / 2 - 140, BY + 40);
+    text('엽서집에 저장됐어요 ✓', DW / 2 - 330, BY + 40);
     pop();
   }
+}
+
+// ── 공유 오버레이 (QR + 링크) ─────────────────────────────────────
+function p7ShowShare() {
+  const url = buildShareURL();
+  if (!P7.shareEl) {
+    const wrap = createDiv('');
+    wrap.elt.style.cssText = 'position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(40,36,30,0.6);font-family:MapoFlowerIsland,sans-serif;';
+    wrap.elt.innerHTML = `
+      <div id="p7share-card" style="background:#f4f0e8;border-radius:18px;padding:28px 32px;max-width:420px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.3);">
+        <div style="font-size:20px;color:#4a4138;margin-bottom:6px;">나의 엽서 가져가기</div>
+        <div style="font-size:13px;color:#8b8073;margin-bottom:16px;">QR을 스캔하거나 링크를 복사하세요</div>
+        <div id="p7share-qr" style="display:flex;justify-content:center;margin-bottom:16px;"></div>
+        <input id="p7share-link" readonly style="width:100%;box-sizing:border-box;border:1px solid #cdbfa3;border-radius:8px;padding:8px;font-size:11px;color:#4a4138;background:#fff;text-align:center;margin-bottom:12px;">
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <button id="p7share-copy" style="flex:1;border:none;border-radius:8px;padding:10px;background:#b8a98f;color:#fff;font-size:15px;font-family:inherit;cursor:pointer;">링크 복사</button>
+          <button id="p7share-close" style="flex:1;border:none;border-radius:8px;padding:10px;background:#cdc4b4;color:#4a4138;font-size:15px;font-family:inherit;cursor:pointer;">닫기</button>
+        </div>
+      </div>`;
+    P7.shareEl = wrap;
+    // 핸들러
+    wrap.elt.addEventListener('mousedown', e => { if (e.target === wrap.elt) p7HideShare(); });
+    wrap.elt.querySelector('#p7share-close').addEventListener('click', p7HideShare);
+    wrap.elt.querySelector('#p7share-copy').addEventListener('click', () => {
+      const inp = wrap.elt.querySelector('#p7share-link');
+      navigator.clipboard?.writeText(inp.value).catch(() => {});
+      inp.select();
+      wrap.elt.querySelector('#p7share-copy').textContent = '복사됨 ✓';
+    });
+  }
+  P7.shareEl.elt.style.display = 'flex';
+  P7.shareEl.elt.querySelector('#p7share-link').value = url;
+  P7.shareEl.elt.querySelector('#p7share-copy').textContent = '링크 복사';
+  const qrDiv = P7.shareEl.elt.querySelector('#p7share-qr');
+  qrDiv.innerHTML = '';
+  new QRCode(qrDiv, { text: url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.L });
+}
+
+function p7HideShare() {
+  if (P7.shareEl) P7.shareEl.elt.style.display = 'none';
 }
 
 function p7Save() {
   if (!P7.buf || P7.saved) return;
   savePostcard(appState.nickname || '관람객', P7.buf);
   P7.saved = true;
+  p7HideShare();
   goTo(8);
 }

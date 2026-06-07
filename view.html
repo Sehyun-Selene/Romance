@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <title>나의 일일산수 (一日山水)</title>
+    <link rel="stylesheet" href="view.css" />
+    <script src="libraries/p5.min.js"></script>
+  </head>
+  <body>
+    <div class="view-wrap">
+      <div class="vtitle">일일산수 <span class="han">(一日山水)</span></div>
+      <div class="vdate" id="vdate"></div>
+      <div class="vgreet">안녕하세요,<br />오늘도 당신의 하루를 응원해요.</div>
+      <div class="vquote" id="vquote"></div>
+
+      <div id="postcard-container" class="vpostcard"></div>
+
+      <div class="vsection-title">오늘을 채운 낭만</div>
+      <ul class="vlist" id="vromance"></ul>
+
+      <div class="vsection-title">오늘의 할 일</div>
+      <ul class="vlist" id="vtodo"></ul>
+
+      <div class="vfooter">
+        <span id="vnick"></span>님의 하루였어요.<br />
+        <a href="./">나도 일일산수 만들어보기 →</a>
+      </div>
+      <div class="verror" id="verror"></div>
+    </div>
+
+    <script src="src/data.js"></script>
+    <script src="src/share.js"></script>
+    <script src="src/assets.js"></script>
+    <script src="view.js"></script>
+  </body>
+</html>
