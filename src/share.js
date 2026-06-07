@@ -70,7 +70,15 @@ function decodeShareState(str) {
 }
 
 // 공유 URL 생성 (view.html)
+// 배포 도메인 (localhost에서 만들어도 QR은 공개 주소를 가리키게) — 도메인 바뀌면 여기 수정
+const PROD_BASE = 'https://daily-romance.vercel.app/';
 function buildShareURL() {
-  const base = location.origin + location.pathname.replace(/[^/]*$/, '');
+  let base;
+  const h = location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1' || h === '' || h === '0.0.0.0') {
+    base = PROD_BASE;   // 로컬/키오스크에서도 폰이 열 수 있는 공개 주소 사용
+  } else {
+    base = location.origin + location.pathname.replace(/[^/]*$/, '');
+  }
   return base + 'view.html?s=' + encodeShareState();
 }
