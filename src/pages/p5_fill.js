@@ -91,7 +91,7 @@ function drawPage5() {
     fill(COLORS.inkSoft); textFont(fontBody); textSize(14);
     text('수정하려는 낭만을 클릭해보세요.\n다시 고른 뒤 낭만 확정하기를 눌러주세요.', 990, 425);
     pop();
-    drawButton('낭만 확정하기', 990, 495, 220, 52, () => goTo(6));
+    drawButton('낭만 확정하기', 990, 495, 220, 52, () => goTo(6), -2);
   } else {
     p5DrawRightPanel();
     const emptyLeft = p5EmptyBlocks().length;
@@ -276,7 +276,7 @@ function p5DrawRightPanel() {
   }
   pop();
 
-  drawButton('추가하기', px + pw / 2, py + ph - 34, 150, 46, p5AddMission);
+  drawButton('추가하기', px + pw / 2, py + ph - 34, 150, 46, p5AddMission, -2);
 }
 
 // ── F-1: 후보 새로고침 (직전 후보는 used에서 풀어 재추천 가능하게) ──

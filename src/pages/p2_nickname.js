@@ -75,5 +75,5 @@ function drawPage2() {
     if (!v) { P2.warn = true; P2.warnAt = millis(); return; }
     appState.nickname = v;
     goTo(3);
-  });
+  }, -2);
 }
