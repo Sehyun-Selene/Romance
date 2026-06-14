@@ -309,6 +309,16 @@ function mouseReleased() {
 
 function keyPressed() {
   registerInput();
+  if (appState.screen === 8 && keyIsDown(SHIFT) && keyCode === DELETE) {
+    if (typeof clearPostcards === 'function') clearPostcards();
+    if (typeof P8 !== 'undefined') {
+      P8.previewCache = {};
+      P8.infoCache = {};
+      P8.modal = null;
+      P8.page = 0;
+    }
+    return false;
+  }
   if (key === 'a' || key === 'A') showAssetPanel = !showAssetPanel;
   if (key === 'd' || key === 'D') { DEV = !DEV; console.log('DEV mode:', DEV); }  // 'd' → 전시/개발 토글
   if (DEV) {
