@@ -86,9 +86,6 @@ function draw() {
 function drawHeader() {
   // 좌상단 로고 + 프로그램 제목 (2~8p). 클릭 시 처음 화면으로.
   push();
-  noStroke();
-  fill(COLORS.btn);
-  rect(40, 28, 26, 26, 4);
   fill(COLORS.ink);
   textFont(fontHeading);
   textSize(20);
