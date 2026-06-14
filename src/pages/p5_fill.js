@@ -98,7 +98,7 @@ function drawPage5() {
     if (emptyLeft > 0 && !P5.selectedBlock) {
       push(); textAlign(CENTER, CENTER);
       fill(COLORS.ink); textFont(fontHeading); textSize(16);
-      text('빈 시간을 모두 눌러 낭만으로 채워주세요', DW / 2 + 100, 748);
+      text('', DW / 2 + 100, 748);
       fill(COLORS.inkSoft); textFont(fontBody); textSize(12);
       text(`(${emptyLeft}칸 남음)`, DW / 2 + 100, 768);
       pop();
@@ -232,7 +232,7 @@ function p5DrawRightPanel() {
 
   if (!P5.selectedBlock) {
     fill(COLORS.inkSoft); textFont(fontBody); textSize(17); textAlign(CENTER, CENTER);
-    text('왼쪽 타임라인에서\n빈 시간을 눌러보세요.', px + pw / 2, py + ph / 2);
+    text('왼쪽 타임라인에서\n빈 시간을 모두 눌러\n낭만으로 채워주세요.', px + pw / 2, py + ph / 2);
     pop(); return;
   }
 
