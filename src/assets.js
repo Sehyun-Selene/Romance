@@ -56,3 +56,28 @@ function pickMountainKey(mission) {
 }
 
 function getMountain(key) { return mountains[key]; }
+
+// 엽서 산 배치 공통 로직.
+// 낭만 개수가 많아도 산 높이는 엽서 높이 기준으로 유지하고, 가로로 겹쳐 밀도 있게 채운다.
+function mountainLayout(index, total, areaW, areaH, drawRandom = {}) {
+  const n = Math.max(1, total || 1);
+  const colW = areaW / n;
+  const fillH = n <= 1 ? 0.94 : (n <= 3 ? 0.88 : (n <= 5 ? 0.82 : 0.76));
+  const baseH = areaH * fillH;
+  const baseW = baseH * 1.5;
+  const sx = areaW / 625;
+  const sy = areaH / 352;
+  const sc = drawRandom.scale || 1;
+  const w = baseW * sc;
+  const h = baseH * sc;
+  const offsetX = (drawRandom.offsetX || 0) * sx;
+  const offsetY = (drawRandom.offsetY || 0) * sy * 0.55;
+  const baseline = areaH - Math.max(8, areaH * 0.035);
+  let cx = (index + 0.5) * colW + offsetX;
+  let cy = baseline - h / 2 + offsetY;
+
+  // 회전/랜덤값이 있어도 엽서 밖으로 과하게 잘리지 않게 중앙점 보정.
+  cx = Math.max(w * 0.18, Math.min(areaW - w * 0.18, cx));
+  cy = Math.max(h / 2 + areaH * 0.02, Math.min(areaH - h / 2 - areaH * 0.02, cy));
+  return { cx, cy, w, h, baseline };
+}

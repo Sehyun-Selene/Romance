@@ -74,31 +74,44 @@ function drawPage6() {
 
   // 하단 버튼 — 체크리스트 박스(bottom y=648) 아래, 엽서와 같은 높이(bottom y=660) 사이
   const BTN_Y = 676;
-  const allChecked = P6.items.length > 0 && P6.items.every(it => it.checked) && !P6.anim;
+  // G-3: 게이트 = 낭만 미션 전부 체크 (일반 일정 무관). 낭만 0개면 바로 활성.
+  const romItems = P6.items.filter(it => it.type === 'romance');
+  const romanceAllChecked = romItems.every(it => it.checked) && !P6.anim;
   push();
-  if (!allChecked) {
-    fill(COLORS.inkSoft); textFont(fontBody); textSize(13); textAlign(LEFT, CENTER);
-    text('일정을 모두 체크해보세요!', TODO.x + 4, BTN_Y);
+  if (!romanceAllChecked) {
+    fill(150, 110, 70); textFont(fontBody); textSize(13); textAlign(LEFT, CENTER);
+    text('낭만을 모두 체크하면 엽서가 완성돼요. 체크박스를 눌러보세요!', TODO.x + 4, BTN_Y);
   }
   pop();
 
   // 이슈1: P4.modal 초기화 포함 (잔존 모달 방지)
+  // E-1: 일정 수정하기 = 타임테이블+할일 전체 리셋 후 P4 시간입력부터
   drawButton('일정 수정하기', 200, BTN_Y, 150, 40, () => {
-    P4.modal = null;
-    P6.inited = false; goTo(4);
-  });
-  // 이슈6: 낭만 수정 시 romance 슬롯 → empty 복원
-  drawButton('낭만 수정하기', 370, BTN_Y, 150, 40, () => {
-    for (const sl of appState.timetable) {
-      if (sl.status === 'romance') { sl.status = 'empty'; sl.label = ''; sl.missionId = null; }
-    }
+    appState.schedules = [];
+    appState.scheduleSeq = 0;
     appState.chosenMissions = [];
     appState.usedMissionIds = new Set();
-    if (typeof P5 !== 'undefined') { P5.selectedBlock = null; P5.candidates = []; P5.chosen = null; }
-    P6.inited = false; goTo(5);
+    appState.checkedMissionOrder = [];
+    appState.timetable = [];
+    if (typeof p4Reset === 'function') p4Reset();
+    if (typeof p5Reset === 'function') p5Reset();
+    P6.inited = false;
+    goTo(4);
+  });
+  // 낭만 수정: 기존 낭만은 유지하고 P5에서 수정할 항목만 클릭하게 함
+  drawButton('낭만 수정하기', 370, BTN_Y, 150, 40, () => {
+    if (typeof P5 !== 'undefined') {
+      P5.selectedBlock = null;
+      P5.candidates = [];
+      P5.chosen = null;
+      P5.hoverTip = null;
+      P5.editMode = true;
+    }
+    P6.inited = false;
+    goTo(5);
   });
 
-  if (allChecked) drawButton('오늘의 엽서 만들기', DW - 185, BTN_Y, 210, 40, () => goTo(7));
+  if (romanceAllChecked) drawButton('오늘의 엽서 만들기', DW - 185, BTN_Y, 210, 40, () => goTo(7));
   else {
     push();
     noStroke(); fill(COLORS.btn); rectMode(CENTER); rect(DW - 185, BTN_Y, 210, 40, 8);
@@ -130,9 +143,8 @@ function p6DrawTodo() {
     const qText = P6.quote.type === '시조' && P6.quote.source
       ? `${P6.quote.text} (${P6.quote.source})`
       : P6.quote.text;
-    fill(COLORS.inkSoft); textFont(fontBody); textSize(12); textAlign(LEFT, TOP); textWrap(WORD);
-    text(qText, x + 18, 222, w - 36, 46);
-    textWrap(CHAR);
+    fill(COLORS.inkSoft);
+    drawMixedText(window, qText, x + 18, 222, w - 36, 12, fontBody, 17);   // 한자 깨짐 방지
   }
 
   // 체크리스트 섹션 (y=282, h=360 → bottom=642)
@@ -140,11 +152,14 @@ function p6DrawTodo() {
   noFill(); stroke(COLORS.line); strokeWeight(1); rect(x, 282, w, 360, 12);
 
   fill(COLORS.ink); textFont(fontHeading); textSize(15); textAlign(LEFT, TOP); noStroke();
-  text('오늘의 할 일', x + 18, 296);
-  stroke(COLORS.line); strokeWeight(0.8); line(x + 18, 316, x + w - 18, 316);
+  text('오늘의 할 일', x + 18, 294);
+  // G-1: 안내 멘트
+  fill(COLORS.inkSoft); textFont(fontBody); textSize(11.5);
+  text('체크박스를 눌러 하나씩 완료해보세요. 낭만을 체크하면 토끼가 산을 그려요.', x + 18, 316);
+  stroke(COLORS.line); strokeWeight(0.8); line(x + 18, 336, x + w - 18, 336);
 
   // 항목 수에 맞춰 itemH 동적 축소 (모든 항목이 박스 안에 들어와 클릭 가능)
-  const startY = 320, listBottom = 636;
+  const startY = 342, listBottom = 636;
   const itemH = min(40, (listBottom - startY) / max(P6.items.length, 1));
   for (let k = 0; k < P6.items.length; k++) {
     const it = P6.items[k];
@@ -221,13 +236,12 @@ function p6UpdateAnim() {
     const next = P6.animQueue.shift();
     const m = appState.chosenMissions[next.missionIdx];
     const total = appState.chosenMissions.length;
-    const colW = PC.w / total;
-    const endX = next.checkOrder * colW + colW / 2;
+    const layout = mountainLayout(next.checkOrder, total, PC.w, PC.h, m.drawRandom);
     P6.anim = {
       missionIdx: next.missionIdx,
       checkOrder: next.checkOrder,
       startX: P6.rabbitX,
-      endX,
+      endX: layout.cx,
       startMs: millis(),
       difficulty: m.difficulty,
       progress: 0,
@@ -258,11 +272,7 @@ function p6DrawPostcard() {
   tint(255, 65); image(bgPostcard, PC.x, PC.y, PC.w, PC.h); noTint();
   noFill(); stroke(COLORS.line); strokeWeight(1.5); rect(PC.x, PC.y, PC.w, PC.h, 8);
 
-  const total    = appState.chosenMissions.length;
-  const colW    = total > 0 ? PC.w / total : PC.w;
-  const mtnW    = min(max(colW * 1.15, 200), 580);   // 이슈3: 더 크게
-  const mtnH    = min(mtnW / 1.5, PC.h - 8);
-  const baseline = PC.y + PC.h - 12;
+  const total = appState.chosenMissions.length;
 
   // 엽서 클리핑
   drawingContext.save();
@@ -280,13 +290,14 @@ function p6DrawPostcard() {
     const alpha = P6.mtnAlpha[midx];
     if (alpha <= 0) continue;
     const m = appState.chosenMissions[midx];
-    const { offsetX, offsetY, scale: sc, rotation } = m.drawRandom;
-    const cx = PC.x + ci * colW + colW / 2 + offsetX;
-    const cy = baseline - mtnH / 2 + offsetY;
+    const { rotation } = m.drawRandom;
+    const layout = mountainLayout(ci, total, PC.w, PC.h, m.drawRandom);
+    const cx = PC.x + layout.cx;
+    const cy = PC.y + layout.cy;
     push();
     translate(cx, cy); rotate(radians(rotation));
     tint(255, alpha); imageMode(CENTER);
-    image(getMountain(m.mountainKey), 0, 0, mtnW * sc, mtnH * sc);
+    image(getMountain(m.mountainKey), 0, 0, layout.w, layout.h);
     noTint(); imageMode(CORNER);
     pop();
   }
@@ -296,12 +307,12 @@ function p6DrawPostcard() {
     const jp  = P6.anim ? (JUMP_PROFILES[P6.anim.difficulty] || JUMP_PROFILES['중']) : { arc: 0 };
     const t   = P6.anim ? P6.anim.progress : 1;
     const rx  = PC.x + P6.rabbitX;
-    const ry  = baseline - jp.arc * sin(PI * t) - 22;
+    const ry  = PC.y + PC.h - 24 - jp.arc * sin(PI * t);
     const frm = !P6.anim ? rabbits.still : (t < 0.15 ? rabbits.still : (t > 0.85 ? rabbits.land : rabbits.jump));
     push(); imageMode(CENTER); image(frm, rx, ry, 90, 60); imageMode(CORNER); pop();  // 이슈8
   } else {
     push(); imageMode(CENTER);
-    image(rabbits.still, PC.x + 50, baseline - 25, 90, 60);
+    image(rabbits.still, PC.x + 50, PC.y + PC.h - 32, 90, 60);
     imageMode(CORNER); pop();
   }
 

@@ -7,13 +7,20 @@ const difficultyMap = {
   '힘들어요': '하',
 };
 
-// 화면에 보일 태그 라벨(슬래시 포함) ↔ 내부 키(데이터의 category 값)
-const TAG_DISPLAY = ['휴식힐링', '개인유지', '문화예술', '사회/교제', '아웃도어', '생산성'];
-const tagKeyOf = label => (label === '사회/교제' ? '사회교제' : label);   // 내부 키
-const tagLabelOf = key => (key === '사회교제' ? '사회/교제' : key);        // 표시용
+// 화면 표시 라벨 ↔ 내부 키(data.js category). C-1: 개인유지→자기관리 (라벨만)
+const TAG_LABELS = { '사회교제': '사회/교제', '개인유지': '자기관리' };
+const TAG_KEYS = { '사회/교제': '사회교제', '자기관리': '개인유지' };
+const TAG_DISPLAY = ['휴식힐링', '자기관리', '문화예술', '사회/교제', '아웃도어', '생산성'];
+const tagKeyOf = label => (TAG_KEYS[label] || label);    // 표시 라벨 → 내부 키
+const tagLabelOf = key => (TAG_LABELS[key] || key);      // 내부 키 → 표시 라벨
+
+function makeSessionId() {
+  return 'sess-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+}
 
 function makeInitialState() {
   return {
+    sessionId: makeSessionId(), // 현재 관람객 세션. 엽서집 링크 권한 판별용
     screen: 1,                  // 1~8
     nickname: '',
     selectedTags: [],           // 내부 키 배열, 최소 3개

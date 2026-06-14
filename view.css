@@ -50,6 +50,14 @@ html, body {
 }
 .vpostcard canvas { display: block; width: 100% !important; height: auto !important; }
 
+.vsave {
+  display: block; width: 100%; margin: 0 0 26px;
+  border: none; border-radius: 10px; padding: 14px;
+  background: #b8a98f; color: #fff; font-size: 15px;
+  font-family: 'MapoFlowerIsland', sans-serif; cursor: pointer;
+}
+.vsave:active { background: #a8987c; }
+
 .vsection-title {
   font-family: 'MapoGoldenPier', serif;
   font-size: 16px; margin: 0 0 8px 2px;

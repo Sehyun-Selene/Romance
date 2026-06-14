@@ -43,32 +43,30 @@ function p7RenderBuffer(g) {
   g.rect(0, 0, PG_W, PG_H);
 
   // 산 그리기 (checkedMissionOrder 순)
-  const total = appState.chosenMissions.length;
-  if (total > 0) {
-    const colW    = PG_W / total;
-    const mtnW    = min(max(colW * 1.15, 200), 560);  // 이슈3: 산 크게
-    const mtnH    = min(mtnW / 1.5, 338);
-    const baseline = 350;
-
-    for (let ci = 0; ci < appState.checkedMissionOrder.length; ci++) {
+  const drawCount = appState.checkedMissionOrder.length;
+  if (drawCount > 0) {
+    let lastLayout = null;
+    for (let ci = 0; ci < drawCount; ci++) {
       const midx = appState.checkedMissionOrder[ci];
       const m    = appState.chosenMissions[midx];
-      const { offsetX, offsetY, scale: sc, rotation } = m.drawRandom;
-      const cx = ci * colW + colW / 2 + offsetX;
-      const cy = baseline - mtnH / 2 + offsetY;
+      const { rotation } = m.drawRandom;
+      const layout = mountainLayout(ci, drawCount, PG_W, 354, m.drawRandom);
+      lastLayout = layout;
       g.push();
-      g.translate(cx, cy);
+      g.translate(layout.cx, layout.cy);
       g.rotate(g.radians(rotation));
       g.imageMode(g.CENTER);
-      g.image(getMountain(m.mountainKey), 0, 0, mtnW * sc, mtnH * sc);
+      g.image(getMountain(m.mountainKey), 0, 0, layout.w, layout.h);
       g.imageMode(g.CORNER);
       g.pop();
     }
 
     // 토끼 (이슈8: 90×60)
-    g.imageMode(g.CENTER);
-    g.image(rabbits.still, P6.rabbitX, baseline - 25, 90, 60);
-    g.imageMode(g.CORNER);
+    if (lastLayout) {
+      g.imageMode(g.CENTER);
+      g.image(rabbits.still, lastLayout.cx, 330, 90, 60);
+      g.imageMode(g.CORNER);
+    }
   }
 
   // 이슈9: 텍스트 영역에 불투명 배경 깔아 가시성 확보
@@ -94,10 +92,8 @@ function p7RenderBuffer(g) {
 
   if (q) {
     const qText = q.type === '시조' && q.source ? `${q.text} (${q.source})` : q.text;
-    g.textFont(fontBody); g.textSize(11); g.fill('#6b5c4a');
-    g.textAlign(g.LEFT, g.TOP); g.textWrap(g.WORD);
-    g.text(qText, 18, 378, PG_W - 36, 36);
-    g.textWrap(g.CHAR);
+    g.fill('#6b5c4a');
+    drawMixedText(g, qText, 18, 378, PG_W - 36, 11, fontBody, 15);   // 한자 깨짐 방지
   }
 }
 
@@ -131,8 +127,8 @@ function drawPage7() {
 }
 
 // ── 공유 오버레이 (QR + 링크) ─────────────────────────────────────
-function p7ShowShare() {
-  const url = buildShareURL();
+function p7ShowShare(urlArg) {
+  const url = urlArg || buildShareURL();
   if (!P7.shareEl) {
     const wrap = createDiv('');
     wrap.elt.style.cssText = 'position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(40,36,30,0.6);font-family:MapoFlowerIsland,sans-serif;';
@@ -172,7 +168,7 @@ function p7HideShare() {
 
 function p7Save() {
   if (!P7.buf || P7.saved) return;
-  savePostcard(appState.nickname || '관람객', P7.buf);
+  savePostcard(appState.nickname || '관람객', P7.buf, encodeShareState(), appState.sessionId);
   P7.saved = true;
   p7HideShare();
   goTo(8);

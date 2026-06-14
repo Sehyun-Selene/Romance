@@ -68,7 +68,7 @@ function p8DrawGrid(items) {
     const item = items[k];
 
     if (!P8.imgCache[item.id] && item.imageDataURL) {
-      P8.imgCache[item.id] = loadImage(item.imageDataURL);
+      P8.imgCache[item.id] = loadImage(item.imageDataURL, () => {}, () => { P8.imgCache[item.id] = null; });   // H-1: 에러핸들
     }
 
     push();
@@ -96,28 +96,70 @@ function p8DrawGrid(items) {
 // ── 확대 모달 ────────────────────────────────────────────────────
 function p8DrawModal() {
   const item = P8.modal.item;
-  // 배경 딤
   push();
   fill(0, 0, 0, 170); rect(0, 0, DW, DH);
+  // 배경(카드 밖) 클릭 → 닫기 (맨 먼저 등록 = 맨 아래)
+  _buttons.push({ x: 0, y: 0, w: DW, h: DH, onClick: () => { P8.modal = null; } });
 
-  // 엽서 비율: 625×420
-  const dw = 810, dh = round(dw * 420 / 625);   // 810×544
-  const dx = DW / 2 - dw / 2, dy = DH / 2 - dh / 2 - 10;
+  // share 디코드 (낭만목록 + 글귀)
+  let info = null;
+  if (item.share) { try { info = decodeShareState(item.share); } catch (e) { info = null; } }
 
-  noStroke(); fill('#f4f0e8'); rect(dx, dy, dw, dh, 8);
-  if (P8.imgCache[item.id]) {
-    image(P8.imgCache[item.id], dx, dy, dw, dh);
+  const cw = 1080, ch = 600, cx0 = DW / 2 - cw / 2, cy0 = DH / 2 - ch / 2;
+  noStroke(); fill('#efe9dc'); rect(cx0, cy0, cw, ch, 16);
+  noFill(); stroke(COLORS.line); strokeWeight(1.2); rect(cx0, cy0, cw, ch, 16);
+
+  // 왼쪽 엽서 이미지
+  const ew = 560, eh = round(ew * 420 / 625), ex = cx0 + 36, ey = cy0 + 48;
+  noStroke(); fill('#f4f0e8'); rect(ex, ey, ew, eh, 8);
+  if (P8.imgCache[item.id]) image(P8.imgCache[item.id], ex, ey, ew, eh);
+  noFill(); stroke(COLORS.line); strokeWeight(1.2); rect(ex, ey, ew, eh, 8);
+
+  // 오른쪽 텍스트
+  const tx = ex + ew + 40, tw = cx0 + cw - tx - 36;
+  noStroke();
+  fill(COLORS.ink); textFont(fontHeading); textSize(22); textAlign(LEFT, TOP);
+  text(`${item.nickname || ''}님의 하루`, tx, cy0 + 50);
+  fill(COLORS.inkSoft); textFont(fontBody); textSize(13);
+  text(item.date || '', tx, cy0 + 84);
+
+  if (info) {
+    fill(COLORS.ink); textFont(fontHeading); textSize(15);
+    text('오늘을 채운 낭만', tx, cy0 + 120);
+    fill(COLORS.ink); textFont(fontBody); textSize(13); textAlign(LEFT, TOP);
+    let ly = cy0 + 148;
+    for (const m of info.chosenMissions) {
+      const lines = (typeof p5WrapLines === 'function') ? p5WrapLines('• ' + m.text, tw) : ['• ' + m.text];
+      for (const ln of lines) { text(ln, tx, ly); ly += 19; }
+      ly += 4;
+      if (ly > cy0 + ch - 130) break;
+    }
+    if (info.quote) {
+      const q = info.quote;
+      const qt = q.type === '시조' && q.source ? `${q.text} (${q.source})` : q.text;
+      fill(COLORS.inkSoft);
+      drawMixedText(window, qt, tx, min(ly + 8, cy0 + ch - 120), tw, 12, fontBody, 17);
+    }
+  } else {
+    fill(COLORS.inkSoft); textFont(fontBody); textSize(13); textAlign(LEFT, TOP);
+    text('(낭만 정보가 없는 엽서예요)', tx, cy0 + 120);
   }
-  noFill(); stroke(COLORS.line); strokeWeight(1.5); rect(dx, dy, dw, dh, 8);
 
-  // 닫기 버튼 X (우상단)
-  const bx = dx + dw - 20, by = dy + 20;
+  // 닫기 X (우상단)
+  const bx = cx0 + cw - 26, by = cy0 + 26;
   noStroke(); fill(COLORS.btn); rectMode(CENTER); rect(bx, by, 36, 36, 8);
   fill(COLORS.ink); textFont(fontHeading); textSize(22); textAlign(CENTER, CENTER);
   text('×', bx, by);
+  rectMode(CORNER);
   pop();
 
-  // 배경 클릭 / X 클릭 모두 닫기
-  _buttons.push({ x: dx + dw - 38, y: dy + 2, w: 36, h: 36, onClick: () => { P8.modal = null; } });
-  _buttons.push({ x: 0, y: 0, w: DW, h: DH, onClick: () => { P8.modal = null; } });
+  // 링크 가져가기 버튼: 현재 세션에서 방금 만든 엽서에만 표시
+  const canShare = !!item.share && !!item.ownerSessionId && item.ownerSessionId === appState.sessionId;
+  if (canShare) {
+    drawButton('이 엽서 링크 가져가기', tx + tw / 2, cy0 + ch - 46, 240, 46, () => {
+      p7ShowShare(buildShareURLFrom(item.share));
+    });
+  }
+  // X 클릭 (맨 위)
+  _buttons.push({ x: bx - 18, y: by - 18, w: 36, h: 36, onClick: () => { P8.modal = null; } });
 }

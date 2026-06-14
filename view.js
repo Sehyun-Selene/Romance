@@ -15,6 +15,7 @@ function setup() {
   if (!data || !data.chosenMissions) {
     document.getElementById('verror').textContent = '엽서 링크를 불러올 수 없어요.';
     document.getElementById('postcard-container').style.display = 'none';
+    const sb = document.getElementById('vsave'); if (sb) sb.style.display = 'none';
     noCanvas(); noLoop(); return;
   }
   VS = data;
@@ -23,6 +24,18 @@ function setup() {
   const cw = cont.offsetWidth, ch = round(cw * 0.66);
   vCnv = createCanvas(cw, ch); vCnv.parent(cont);
   noLoop();
+  // H-4: 엽서 PNG 저장 (고해상 버퍼 새로 그려 저장)
+  const sb = document.getElementById('vsave');
+  if (sb) sb.addEventListener('click', vSavePostcard);
+}
+
+// 고해상도(1250×825) 버퍼에 엽서만 그려 PNG 다운로드
+function vSavePostcard() {
+  const W = 1250, H = round(W * 0.66);
+  const g = createGraphics(W, H);
+  drawPostcardTo(g, W, H);
+  saveCanvas(g, '일일산수_엽서_' + (VS.nickname || ''), 'png');
+  g.remove();
 }
 
 function windowResized() {
@@ -34,40 +47,39 @@ function windowResized() {
 
 function draw() {
   if (!VS) return;
-  drawPostcard(width, height);
+  drawPostcardTo(window, width, height);
 }
 
-// ── 엽서(산수화) ──
-function drawPostcard(cw, ch) {
-  background('#f4f0e8');
-  push(); tint(255, 65); image(bgPostcard, 0, 0, cw, ch); noTint(); pop();
+// ── 엽서(산수화) — g: 메인은 window, 저장은 p5.Graphics ──
+function drawPostcardTo(g, cw, ch) {
+  g.background('#f4f0e8');
+  g.push(); g.tint(255, 65); g.image(bgPostcard, 0, 0, cw, ch); g.noTint(); g.pop();
 
   const ms = VS.chosenMissions;
   const total = ms.length || 1;
-  const colW = cw / total;
-  const baseline = ch * 0.86;
-  const mtnW = constrain(colW * 1.15, cw * 0.28, cw * 0.95);
-  const mtnH = min(mtnW / 1.5, ch * 0.92);
-  const sx = cw / 625;   // 디자인 공간 → 캔버스 스케일
 
+  let lastLayout = null;
   for (let ci = 0; ci < ms.length; ci++) {
     const m = ms[ci], dr = m.drawRandom;
     const img = getMountain(m.mountainKey);
     if (!img) continue;
-    const cx = ci * colW + colW / 2 + dr.offsetX * sx;
-    const cy = baseline - mtnH / 2 + dr.offsetY * sx;
-    push(); translate(cx, cy); rotate(radians(dr.rotation)); imageMode(CENTER);
-    image(img, 0, 0, mtnW * dr.scale, mtnH * dr.scale); imageMode(CORNER); pop();
+    const layout = mountainLayout(ci, total, cw, ch, dr);
+    lastLayout = layout;
+    g.push();
+    g.translate(layout.cx, layout.cy);
+    g.rotate(radians(dr.rotation));
+    g.imageMode(CENTER);
+    g.image(img, 0, 0, layout.w, layout.h);
+    g.imageMode(CORNER);
+    g.pop();
   }
 
-  // 토끼 — 마지막 산 위 정지
-  if (ms.length) {
+  if (ms.length && lastLayout) {
     const rw = cw * 0.13, rh = rw * 0.66;
-    const rx = (ms.length - 0.5) * colW;
-    push(); imageMode(CENTER); image(rabbits.still, rx, baseline - rh * 0.4, rw, rh); imageMode(CORNER); pop();
+    g.push(); g.imageMode(CENTER); g.image(rabbits.still, lastLayout.cx, ch - rh * 0.55, rw, rh); g.imageMode(CORNER); g.pop();
   }
 
-  noFill(); stroke('#bdb4a4'); strokeWeight(1.2); rect(0, 0, cw, ch, 4);
+  g.noFill(); g.stroke('#bdb4a4'); g.strokeWeight(1.2); g.rect(0, 0, cw, ch, 4);
 }
 
 // ── DOM 채우기 ──

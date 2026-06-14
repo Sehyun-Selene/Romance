@@ -109,6 +109,38 @@ function centerTitle(str, y, size = 34) {
   pop();
 }
 
+// ── 한자/한글 혼합 텍스트 (한자 글리프 없는 본문폰트 깨짐 방지) ──
+// ctx: 메인은 window, 버퍼는 p5.Graphics. 한자는 시스템 'serif' 폴백.
+function _isHan(cp) {
+  return (cp >= 0x4E00 && cp <= 0x9FFF) || (cp >= 0x3400 && cp <= 0x4DBF) || (cp >= 0xF900 && cp <= 0xFAFF);
+}
+function drawMixedText(ctx, str, x, y, boxW, size, korFont, lineH) {
+  ctx.push();
+  ctx.textSize(size); ctx.textAlign(LEFT, TOP);
+  const fontFor = ch => (_isHan(ch.codePointAt(0)) ? 'serif' : korFont);
+  const words = String(str).split(' ');
+  let cx = x, cy = y;
+  for (let wi = 0; wi < words.length; wi++) {
+    const word = words[wi];
+    // 토큰 폭 계산
+    let ww = 0;
+    for (const ch of word) { ctx.textFont(fontFor(ch)); ww += ctx.textWidth(ch); }
+    if (cx > x && (cx - x) + ww > boxW) { cx = x; cy += lineH; }   // 줄바꿈
+    for (const ch of word) { ctx.textFont(fontFor(ch)); ctx.text(ch, cx, cy); cx += ctx.textWidth(ch); }
+    if (wi < words.length - 1) { ctx.textFont(korFont); ctx.text(' ', cx, cy); cx += ctx.textWidth(' '); }
+  }
+  ctx.pop();
+  return cy + lineH;
+}
+
+// ── 일정 색: 베이스 베이지(#b8a98f) 톤 유지, 명도만 일정별로 차등 (D-1) ──
+function scheduleColor(id) {
+  const base = [184, 169, 143];
+  const steps = [0.80, 0.88, 0.96, 1.05, 1.13];
+  const f = steps[Math.abs((id || 0) * 7) % steps.length];
+  return color(min(base[0] * f, 255), min(base[1] * f, 255), min(base[2] * f, 255));
+}
+
 // 임시 페이지 본문(뼈대): 이후 단계에서 각 페이지 파일로 대체
 function pagePlaceholder(label) {
   push();
@@ -141,9 +173,11 @@ function drawPage1() {
 
   textAlign(CENTER, CENTER);
   textFont(fontHeading); textSize(26); fill(COLORS.inkSoft);
-  text('하루에 한 폭의 낭만을 그리다', DW / 2, DH / 2 + 8);
+  text('하루의 빈 시간을 낭만으로 채워보세요', DW / 2, DH / 2 + 8);
   pop();
   drawButton('시작하기', DW / 2, DH / 2 + 92, 150, 54, () => goTo(2));
+  // B-1: 엽서집 바로가기
+  drawButton('엽서집 보기', DW / 2, DH / 2 + 158, 150, 44, () => goTo(8));
 }
 
 // drawPage2/3 → src/pages/p2_nickname.js, p3_tags.js

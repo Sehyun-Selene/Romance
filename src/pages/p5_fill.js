@@ -7,9 +7,36 @@ const P5 = {
   selectedBlock: null,
   candidates: [],
   chosen: null,
+  hoverTip: null,
+  candidateCache: {},
+  editMode: false,
 };
 
-function p5Reset() { P5.selectedBlock = null; P5.candidates = []; P5.chosen = null; }
+function p5Reset() {
+  P5.selectedBlock = null;
+  P5.candidates = [];
+  P5.chosen = null;
+  P5.hoverTip = null;
+  P5.candidateCache = {};
+  P5.editMode = false;
+}
+
+function p5BlockKey(block) {
+  return block ? block.slotIndices.join('-') : '';
+}
+
+function p5SelectBlock(block) {
+  if (!block) return;
+  const key = p5BlockKey(block);
+  if (P5.selectedBlock && p5BlockKey(P5.selectedBlock) === key) return;
+  P5.selectedBlock = block;
+  if (!P5.candidateCache[key]) {
+    const startMin = appState.timetable[block.slotIndices[0]].minutes;
+    P5.candidateCache[key] = recommendMissions(min(block.durationMin, 180), startMin);
+  }
+  P5.candidates = P5.candidateCache[key].slice();
+  P5.chosen = null;
+}
 
 // 수동 줄바꿈 (카드 세로 중앙 정렬용)
 function p5WrapLines(str, maxW) {
@@ -62,19 +89,22 @@ function drawPage5() {
     fill(COLORS.ink); textFont(fontHeading); textSize(22); textAlign(CENTER, CENTER);
     text('낭만으로 하루를\n가득 채웠어요', 990, 345);
     fill(COLORS.inkSoft); textFont(fontBody); textSize(14);
-    text('낭만 일정을 바꾸고 싶다면\n낭만 일정을 클릭해보세요!', 990, 425);
+    text('수정하려는 낭만을 클릭해보세요.\n다시 고른 뒤 낭만 확정하기를 눌러주세요.', 990, 425);
     pop();
     drawButton('낭만 확정하기', 990, 495, 220, 52, () => goTo(6));
   } else {
     p5DrawRightPanel();
     const emptyLeft = p5EmptyBlocks().length;
     if (emptyLeft > 0 && !P5.selectedBlock) {
-      push();
-      fill(COLORS.inkSoft); textFont(fontBody); textSize(13); textAlign(CENTER, CENTER);
-      text(`빈 시간 ${emptyLeft}칸 남음`, DW / 2 + 100, 755);
+      push(); textAlign(CENTER, CENTER);
+      fill(COLORS.ink); textFont(fontHeading); textSize(16);
+      text('빈 시간을 모두 눌러 낭만으로 채워주세요', DW / 2 + 100, 748);
+      fill(COLORS.inkSoft); textFont(fontBody); textSize(12);
+      text(`(${emptyLeft}칸 남음)`, DW / 2 + 100, 768);
       pop();
     }
   }
+  p5DrawTooltip();   // 최상단 호버 툴팁
 }
 
 // ── 타임테이블 ──
@@ -89,6 +119,7 @@ function p5DrawTimetable(tlx) {
   text('타임라인', x + w / 2, y - 10);
 
   noStroke(); fill('#f4f0e8'); rect(x - 56, y - 6, w + 62, (bottom - y) + 14, 6);
+  P5.hoverTip = null;   // 매 프레임 리셋 (F-3)
 
   const selIdxs = new Set(P5.selectedBlock ? P5.selectedBlock.slotIndices : []);
 
@@ -99,7 +130,7 @@ function p5DrawTimetable(tlx) {
     noStroke();
     if (selIdxs.has(i))                  fill(COLORS.slotYellow);
     else if (slot.status === 'romance')  fill(COLORS.slotYellow);
-    else if (slot.status === 'schedule') fill(COLORS.slotBeige);
+    else if (slot.status === 'schedule') fill(scheduleColor(slot.scheduleId));   // D-1 명도차
     else                                 fill(COLORS.slotEmpty);
     rect(x, sy, w, slotH);
     stroke(COLORS.line); strokeWeight(0.5); line(x, sy, x + w, sy);
@@ -133,8 +164,10 @@ function p5DrawTimetable(tlx) {
         textFont(fontHeading); textSize(15);
         text('낭만', x + w / 2, midY);
         // 낭만 블록 재클릭 → 되돌려 재선택 (#8)
-        const mid = s.missionId, ii = i, jj = j;
+        const mid = s.missionId;
         _buttons.push({ x, y: topY, w, h: botY - topY, onClick: () => p5UndoRomance(mid) });
+        // F-3: 호버 시 미션 텍스트 툴팁 (그리기는 drawPage5 끝에서 — 최상단)
+        if (mouseInRect(x, topY, w, botY - topY)) P5.hoverTip = { mid, midY, rightX: x + w, topY: y, botY: bottom };
       } else {
         fill(COLORS.ink); textFont(fontBody); textSize(15);   // #6 라벨 크게
         text(s.label, x + w / 2, midY);
@@ -148,18 +181,32 @@ function p5DrawTimetable(tlx) {
         _buttons.push({
           x, y: topY, w, h: botY - topY,
           onClick: () => {
-            if (P5.selectedBlock && P5.selectedBlock.slotIndices[0] === i) {
-              P5.selectedBlock = null; P5.candidates = []; P5.chosen = null; return;
-            }
-            P5.selectedBlock = block;
-            P5.candidates = recommendMissions(min(block.durationMin, 180));
-            P5.chosen = null;
+            p5SelectBlock(block);
           },
         });
         i = j + 1;
       } else i++;
     }
   }
+
+  pop();
+}
+
+// F-3: 호버 툴팁 (최상단 — 패널 위에 그림)
+function p5DrawTooltip() {
+  if (!P5.hoverTip) return;
+  const m = appState.chosenMissions.find(c => c.id === P5.hoverTip.mid);
+  if (!m) return;
+  push();
+  const tw = 250, tx = P5.hoverTip.rightX + 10;
+  textFont(fontBody); textSize(13);
+  const lines = p5WrapLines(m.text, tw - 24);
+  const th = 16 + lines.length * 19;
+  const ty0 = constrain(P5.hoverTip.midY - th / 2, P5.hoverTip.topY, P5.hoverTip.botY - th);
+  noStroke(); fill(74, 65, 56, 245); rect(tx, ty0, tw, th, 8);
+  fill('#f4f0e8'); textAlign(LEFT, TOP);
+  let ty = ty0 + 9;
+  for (const ln of lines) { text(ln, tx + 12, ty); ty += 19; }
   pop();
 }
 
@@ -172,9 +219,8 @@ function p5UndoRomance(mid) {
   appState.chosenMissions = appState.chosenMissions.filter(c => c.id !== mid);
   for (const k of idxs) { slots[k].status = 'empty'; slots[k].label = ''; slots[k].missionId = null; }
   const block = { slotIndices: idxs, durationMin: idxs.length * 30 };
-  P5.selectedBlock = block;
-  P5.candidates = recommendMissions(min(block.durationMin, 180));
-  P5.chosen = null;
+  delete P5.candidateCache[p5BlockKey(block)];
+  p5SelectBlock(block);
 }
 
 // ── 오른쪽 추천 패널 ──
@@ -193,6 +239,16 @@ function p5DrawRightPanel() {
   const dur = min(P5.selectedBlock.durationMin, 180);
   fill(COLORS.inkSoft); textFont(fontBody); textSize(14); textAlign(CENTER, TOP);
   text(`${dur}분짜리 빈 시간 — 어떤 낭만을 채울까요?`, px + pw / 2, py + 22);
+
+  // F-1: 새로고침 버튼 (우상단)
+  const rfx = px + pw - 36, rfy = py + 30;
+  const rfOver = mouseInRect(rfx - 20, rfy - 20, 40, 40);
+  push(); rectMode(CENTER); noStroke();
+  fill(rfOver ? COLORS.slotBeige : COLORS.btn); ellipse(rfx, rfy, 40, 40);
+  fill(rfOver ? '#fff' : COLORS.ink); textFont('serif'); textSize(22); textAlign(CENTER, CENTER);
+  text('↻', rfx, rfy - 1);
+  pop();
+  _buttons.push({ x: rfx - 20, y: rfy - 20, w: 40, h: 40, onClick: p5Refresh });
 
   const cardW = pw - 60, cardH = 84, cardX = px + 30;
   for (let k = 0; k < P5.candidates.length; k++) {
@@ -223,6 +279,16 @@ function p5DrawRightPanel() {
   drawButton('추가하기', px + pw / 2, py + ph - 34, 150, 46, p5AddMission);
 }
 
+// ── F-1: 후보 새로고침 (직전 후보는 used에서 풀어 재추천 가능하게) ──
+function p5Refresh() {
+  if (!P5.selectedBlock) return;
+  for (const c of P5.candidates) { if (!c.isRest) appState.usedMissionIds.delete(c.id); }
+  const startMin = appState.timetable[P5.selectedBlock.slotIndices[0]].minutes;
+  P5.candidates = recommendMissions(min(P5.selectedBlock.durationMin, 180), startMin);
+  P5.candidateCache[p5BlockKey(P5.selectedBlock)] = P5.candidates.slice();
+  P5.chosen = null;
+}
+
 // ── 낭만 추가 ──
 function p5AddMission() {
   if (!P5.selectedBlock || P5.chosen === null) return;
@@ -251,4 +317,5 @@ function p5AddMission() {
   }
 
   P5.selectedBlock = null; P5.candidates = []; P5.chosen = null;
+  P5.editMode = false;
 }

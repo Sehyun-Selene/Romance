@@ -15,6 +15,7 @@ const P4 = {
   modal: null,          // {type:'delete',id} | {type:'difficulty'} | {type:'addSchedule'}
   msg: '', msgAt: -99999,
   drag: { active: false, startIdx: -1, endIdx: -1, pendingStart: -1, pendingEnd: -1 },
+  editBackup: null,     // 수정 중 원본 백업 (취소 시 복원)
   tt: { x: 120, y: 160, w: 290, bottom: 715 },
 };
 
@@ -39,6 +40,7 @@ function p4Reset() {
   P4.inName.value('');
   P4.modal = null; P4.msg = '';
   P4.drag = { active: false, startIdx: -1, endIdx: -1, pendingStart: -1, pendingEnd: -1 };
+  P4.editBackup = null;
   p4CloseDropdown();
 }
 
@@ -280,7 +282,9 @@ function p4DrawSchedulePhase() {
     text(`${t1}  →  ${t2}`, rx + rw / 2, ry + 45);
   } else {
     fill(COLORS.inkSoft); textFont(fontBody); textSize(15);
-    text('타임라인을 드래그해서 일정을 추가하세요', rx + rw / 2, ry + 45);
+    text('타임라인을 드래그해서 일정을 추가하세요', rx + rw / 2, ry + 38);
+    fill(150, 110, 70); textSize(13);
+    text('과유불급 — 생산적인 하루도 좋지만, 쉬어갈 수 있는 틈도 필요해요.', rx + rw / 2, ry + 62);
   }
   pop();
 
@@ -298,12 +302,14 @@ function p4DrawSchedulePhase() {
     appState.schedules.forEach((s, k) => {
       const iy = startY + k * itemH;
       if (iy + itemH > ry + 470) return;
-      noStroke(); fill(COLORS.slotBeige); rect(rx + 16, iy + 4, rw - 70, itemH - 8, 8);
+      noStroke(); fill(scheduleColor(s.id)); rect(rx + 16, iy + 4, rw - 70, itemH - 8, 8);   // D-1 명도차
       fill(COLORS.ink); textFont(fontBody); textSize(15); textAlign(LEFT, CENTER);
       text(`${minToTime(s.startMin)}  ~  ${minToTime(s.endMin)}   ${s.name}`, rx + 30, iy + itemH / 2);
       noStroke(); fill(COLORS.btn); rect(rx + rw - 52, iy + 8, 32, 32, 6);
       fill(COLORS.ink); textFont(fontBody); textSize(16); textAlign(CENTER, CENTER);
       text('×', rx + rw - 36, iy + itemH / 2);
+      // 항목 본체 클릭 → 수정/삭제 모달 (D-4), × 는 바로 삭제
+      _buttons.push({ x: rx + 16, y: iy + 4, w: rw - 70, h: itemH - 8, onClick: () => { P4.modal = { type: 'editSchedule', id: s.id }; } });
       _buttons.push({ x: rx + rw - 54, y: iy + 6, w: 36, h: 36, onClick: () => { P4.modal = { type: 'delete', id: s.id }; } });
     });
   }
@@ -324,10 +330,13 @@ function p4DrawTimetable(interactive) {
   const slotH = (bottom - y) / slots.length;
   noStroke(); fill('#f4f0e8'); rect(x - 56, y - 6, w + 62, (bottom - y) + 14, 6);
 
+  // 드래그 선택 OR addSchedule 모달 대기 구간 → 노랑 유지 (D-3)
   const selIdxs = new Set();
   if (P4.drag.active && P4.drag.startIdx >= 0) {
     const ds = min(P4.drag.startIdx, P4.drag.endIdx), de = max(P4.drag.startIdx, P4.drag.endIdx);
     for (let i = ds; i <= de; i++) selIdxs.add(i);
+  } else if (P4.modal?.type === 'addSchedule' && P4.drag.pendingStart >= 0) {
+    for (let i = P4.drag.pendingStart; i <= P4.drag.pendingEnd; i++) selIdxs.add(i);
   }
 
   textFont(fontBody);
@@ -335,8 +344,9 @@ function p4DrawTimetable(interactive) {
     const slot = slots[i];
     const sy = y + i * slotH;
     noStroke();
-    if (selIdxs.has(i) && slot.status === 'empty') fill(COLORS.slotYellow);
-    else if (slot.status === 'schedule' || slot.status === 'romance') fill(COLORS.slotBeige);
+    if (selIdxs.has(i)) fill(COLORS.slotYellow);
+    else if (slot.status === 'romance') fill(COLORS.slotYellow);
+    else if (slot.status === 'schedule') fill(scheduleColor(slot.scheduleId));   // D-1 명도차
     else fill(COLORS.slotEmpty);
     rect(x, sy, w, slotH);
     stroke(COLORS.line); strokeWeight(0.5); line(x, sy, x + w, sy);
@@ -356,8 +366,13 @@ function p4DrawTimetable(interactive) {
       let j = i;
       while (j + 1 < slots.length && slots[j + 1].scheduleId === s.scheduleId) j++;
       const topY = y + i * slotH, botY = y + (j + 1) * slotH;
-      noStroke(); fill(COLORS.ink); textFont(fontBody); textSize(16); textAlign(CENTER, CENTER);  // #6 크게
+      noStroke(); fill(COLORS.ink); textFont(fontBody); textSize(16); textAlign(CENTER, CENTER);
       text(s.label, x + w / 2, (topY + botY) / 2);
+      // D-4: 일정 블록 클릭 → 수정/삭제 모달
+      if (interactive) {
+        const sid = s.scheduleId;
+        _buttons.push({ x, y: topY, w, h: botY - topY, onClick: () => { P4.modal = { type: 'editSchedule', id: sid }; } });
+      }
       i = j + 1;
     } else i++;
   }
@@ -405,9 +420,25 @@ function p4DrawModal() {
     text('일정 이름을 입력해주세요', DW / 2, my + 68);
     // inName DOM은 my+88 위치 (p4OnFrame), 버튼은 충분히 아래
     drawButton('취소', DW / 2 - 80, my + 170, 120, 42, () => {
-      P4.modal = null; P4.drag.pendingStart = -1; P4.drag.pendingEnd = -1;
+      if (P4.editBackup) { appState.schedules.push(P4.editBackup); P4.editBackup = null; rebuildTimetable(); }
+      P4.modal = null; P4.drag.pendingStart = -1; P4.drag.pendingEnd = -1; P4.inName.value('');
     });
     drawButton('추가하기', DW / 2 + 80, my + 170, 120, 42, p4AddSchedule);
+
+  } else if (P4.modal.type === 'editSchedule') {
+    const sch = appState.schedules.find(s => s.id === P4.modal.id);
+    const mw = 460, mh = 210, mx = DW / 2 - mw / 2, my = DH / 2 - mh / 2;
+    noStroke(); fill('#f3efe7'); rect(mx, my, mw, mh, 16);
+    fill(COLORS.ink); textFont(fontHeading); textSize(19); textAlign(CENTER, CENTER);
+    text(sch ? sch.name : '일정', DW / 2, my + 48);
+    fill(COLORS.inkSoft); textFont(fontBody); textSize(13);
+    text(sch ? `${minToTime(sch.startMin)} ~ ${minToTime(sch.endMin)}` : '', DW / 2, my + 76);
+    drawButton('수정', DW / 2 - 130, my + 150, 110, 44, () => p4StartEditSchedule(P4.modal.id));
+    drawButton('삭제', DW / 2, my + 150, 110, 44, () => {
+      appState.schedules = appState.schedules.filter(s => s.id !== P4.modal.id);
+      rebuildTimetable(); P4.modal = null;
+    });
+    drawButton('취소', DW / 2 + 130, my + 150, 110, 44, () => { P4.modal = null; });
 
   } else if (P4.modal.type === 'delete') {
     const mw = 460, mh = 200, mx = DW / 2 - mw / 2, my = DH / 2 - mh / 2;
@@ -451,6 +482,24 @@ function p4DrawModal() {
   pop();
 }
 
+// ── 일정 수정: 삭제 후 그 구간을 pending으로 잡아 addSchedule 모달 재사용 (이름 prefill) ──
+function p4StartEditSchedule(id) {
+  const sch = appState.schedules.find(s => s.id === id);
+  if (!sch) { P4.modal = null; return; }
+  const name = sch.name, startMin = sch.startMin, endMin = sch.endMin;
+  P4.editBackup = { id, startMin, endMin, name };   // 취소 시 복원용
+  appState.schedules = appState.schedules.filter(s => s.id !== id);
+  rebuildTimetable();
+  const slots = appState.timetable;
+  const sIdx = slots.findIndex(sl => sl.minutes === startMin);
+  let eIdx = sIdx;
+  for (let k = sIdx; k < slots.length; k++) { if (slots[k].minutes + 30 <= endMin) eIdx = k; else break; }
+  if (sIdx < 0) { P4.modal = null; return; }
+  P4.drag.pendingStart = sIdx; P4.drag.pendingEnd = eIdx;
+  P4.inName.value(name);
+  P4.modal = { type: 'addSchedule' };
+}
+
 // ── 일정 추가 ──
 function p4AddSchedule() {
   const name = (P4.inName.value() || '').trim();
@@ -462,8 +511,10 @@ function p4AddSchedule() {
   let endMin;
   if (e + 1 < slots.length) endMin = slots[e + 1].minutes;
   else { let sl = timeToMin(appState.sleepTime); if (sl <= timeToMin(appState.wakeTime)) sl += 1440; endMin = sl; }
-  appState.schedules.push({ id: ++appState.scheduleSeq, startMin, endMin, name });
+  const newId = P4.editBackup ? P4.editBackup.id : ++appState.scheduleSeq;   // 수정이면 원래 id 유지
+  appState.schedules.push({ id: newId, startMin, endMin, name });
   rebuildTimetable();
+  P4.editBackup = null;
   P4.modal = null;
   P4.drag.pendingStart = -1; P4.drag.pendingEnd = -1;
   p4SetMsg('');
