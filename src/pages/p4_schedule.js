@@ -74,8 +74,15 @@ function p4Init() {
 
   P4.inName = createInput('', 'text');
   P4.inName.attribute('placeholder', '일정 이름을 입력하세요');
-  P4.inName.elt.style.cssText = 'box-sizing:border-box;border:none;border-radius:10px;background:#f4f0e8;text-align:center;color:#4a4138;font-family:MapoFlowerIsland,sans-serif;outline:none;';
+  P4.inName.elt.style.cssText = 'box-sizing:border-box;border:2px solid #cdc4b4;border-radius:10px;background:#fdfbf5;text-align:center;color:#4a4138;font-family:MapoFlowerIsland,sans-serif;outline:none;caret-color:#4a4138;';
   P4.inName.hide();
+
+  // 입력 직후 클릭 시 캔버스 클릭 파이프라인이 한 프레임 지연되는 문제를 피하기 위해
+  // '추가하기'는 캔버스 버튼과 겹치는 투명 DOM 오버레이로도 클릭을 받는다.
+  P4.btnAdd = createDiv('');
+  P4.btnAdd.elt.style.cssText = 'position:absolute;cursor:pointer;background:transparent;';
+  P4.btnAdd.elt.addEventListener('click', () => p4AddSchedule());
+  P4.btnAdd.hide();
 
   P4.dd = createDiv(''); P4.dd.addClass('p4dd'); P4.dd.hide();
   P4.dd.elt.addEventListener('click', e => {
@@ -192,7 +199,7 @@ function p4OnRelease() {
 // ── DOM 동기화 ──
 function p4OnFrame() {
   if (!P4.inited) return;
-  const hideAll = () => { P4.timeEls.wake.hide(); P4.timeEls.sleep.hide(); P4.inName.hide(); };
+  const hideAll = () => { P4.timeEls.wake.hide(); P4.timeEls.sleep.hide(); P4.inName.hide(); P4.btnAdd.hide(); };
   if (appState.screen !== 4) { hideAll(); if (P4.active) p4CloseDropdown(); P4.drag.active = false; return; }
 
   const rect = mainCanvas.elt.getBoundingClientRect();
@@ -215,8 +222,9 @@ function p4OnFrame() {
   } else if (P4.modal?.type === 'addSchedule') {
     P4.timeEls.wake.hide(); P4.timeEls.sleep.hide();
     const my = DH / 2 - 110;
-    place(P4.inName, DW / 2 - 190, my + 88, 380, 40);
+    place(P4.inName, DW / 2 - 190, my + 78, 380, 40);
     P4.inName.style('font-size', (17 * sc) + 'px');
+    place(P4.btnAdd, DW / 2 + 20, my + 149, 120, 42);
   } else {
     hideAll();
     if (P4.active) p4CloseDropdown();
@@ -248,7 +256,10 @@ function p4DrawTimePhase() {
   p4Panel(DW / 2 - 310, 300, 620, 165);
   p4Pill('오늘의 기상 시간', DW / 2 - 290, 330, 580);
   p4Pill('오늘의 취침 시간', DW / 2 - 290, 393, 580);
-  drawButton('다음으로', DW / 2, 525, 150, 46, p4ConfirmTime);
+  // 시간 텍스트 영역 전체 클릭 시에도 시간대 선택 드롭다운 열림
+  _buttons.push({ x: DW / 2 - 290, y: 330, w: 580, h: 34, onClick: () => p4OpenDropdown('wake') });
+  _buttons.push({ x: DW / 2 - 290, y: 393, w: 580, h: 34, onClick: () => p4OpenDropdown('sleep') });
+  drawButton('다음으로', DW / 2, 525, 150, 46, p4ConfirmTime, -2);
 }
 function p4ConfirmTime() {
   const wake = timeToMin(P4.timeVals.wake);
@@ -266,8 +277,7 @@ function p4ConfirmTime() {
 
 // ── phase 2 ──
 function p4DrawSchedulePhase() {
-  if (P4.modal) { p4DrawTimetable(false); return; }
-  p4DrawTimetable(true);
+  p4DrawTimetable(!P4.modal);
 
   const rx = 460, ry = 155, rw = 790;
   push();
@@ -299,7 +309,8 @@ function p4DrawSchedulePhase() {
     text('아직 추가된 일정이 없어요', rx + rw / 2, ry + 280);
   } else {
     const itemH = 48, startY = ry + 144;
-    appState.schedules.forEach((s, k) => {
+    const sorted = [...appState.schedules].sort((a, b) => a.startMin - b.startMin);
+    sorted.forEach((s, k) => {
       const iy = startY + k * itemH;
       if (iy + itemH > ry + 470) return;
       noStroke(); fill(scheduleColor(s.id)); rect(rx + 16, iy + 4, rw - 70, itemH - 8, 8);   // D-1 명도차
@@ -307,16 +318,20 @@ function p4DrawSchedulePhase() {
       text(`${minToTime(s.startMin)}  ~  ${minToTime(s.endMin)}   ${s.name}`, rx + 30, iy + itemH / 2);
       noStroke(); fill(COLORS.btn); rect(rx + rw - 52, iy + 8, 32, 32, 6);
       fill(COLORS.ink); textFont(fontBody); textSize(16); textAlign(CENTER, CENTER);
-      text('×', rx + rw - 36, iy + itemH / 2);
-      // 항목 본체 클릭 → 수정/삭제 모달 (D-4), × 는 바로 삭제
-      _buttons.push({ x: rx + 16, y: iy + 4, w: rw - 70, h: itemH - 8, onClick: () => { P4.modal = { type: 'editSchedule', id: s.id }; } });
-      _buttons.push({ x: rx + rw - 54, y: iy + 6, w: 36, h: 36, onClick: () => { P4.modal = { type: 'delete', id: s.id }; } });
+      text('×', rx + rw - 36, iy + itemH / 2 - 3);
+      // 항목 본체 클릭 → 수정/삭제 모달 (D-4), × 는 바로 삭제 (모달 떠있을 때는 비활성)
+      if (!P4.modal) {
+        _buttons.push({ x: rx + 16, y: iy + 4, w: rw - 70, h: itemH - 8, onClick: () => { P4.modal = { type: 'editSchedule', id: s.id }; } });
+        _buttons.push({ x: rx + rw - 54, y: iy + 6, w: 36, h: 36, onClick: () => { P4.modal = { type: 'delete', id: s.id }; } });
+      }
     });
   }
   pop();
 
-  drawButton('시간 다시 입력', 760, 715, 160, 44, () => { p4CloseDropdown(); P4.phase = 'time'; });
-  drawButton('일정 확정하기', 980, 715, 180, 44, () => { P4.modal = { type: 'difficulty' }; });
+  if (!P4.modal) {
+    drawButton('시간 다시 입력', 760, 715, 160, 44, () => { p4CloseDropdown(); P4.phase = 'time'; }, -2);
+    drawButton('일정 확정하기', 980, 715, 180, 44, () => { P4.modal = { type: 'difficulty' }; }, -2);
+  }
 }
 
 // ── 타임테이블 ──
@@ -416,14 +431,12 @@ function p4DrawModal() {
     const t2 = e + 1 < slots.length ? slots[e + 1].time : appState.sleepTime;
     fill(COLORS.ink); textFont(fontHeading); textSize(18); textAlign(CENTER, CENTER);
     text(`${t1} ~ ${t2}`, DW / 2, my + 42);
-    fill(COLORS.inkSoft); textFont(fontBody); textSize(14);
-    text('일정 이름을 입력해주세요', DW / 2, my + 68);
     // inName DOM은 my+88 위치 (p4OnFrame), 버튼은 충분히 아래
     drawButton('취소', DW / 2 - 80, my + 170, 120, 42, () => {
       if (P4.editBackup) { appState.schedules.push(P4.editBackup); P4.editBackup = null; rebuildTimetable(); }
       P4.modal = null; P4.drag.pendingStart = -1; P4.drag.pendingEnd = -1; P4.inName.value('');
-    });
-    drawButton('추가하기', DW / 2 + 80, my + 170, 120, 42, p4AddSchedule);
+    }, -2);
+    drawButton('추가하기', DW / 2 + 80, my + 170, 120, 42, p4AddSchedule, -2);
 
   } else if (P4.modal.type === 'editSchedule') {
     const sch = appState.schedules.find(s => s.id === P4.modal.id);
@@ -433,12 +446,12 @@ function p4DrawModal() {
     text(sch ? sch.name : '일정', DW / 2, my + 48);
     fill(COLORS.inkSoft); textFont(fontBody); textSize(13);
     text(sch ? `${minToTime(sch.startMin)} ~ ${minToTime(sch.endMin)}` : '', DW / 2, my + 76);
-    drawButton('수정', DW / 2 - 130, my + 150, 110, 44, () => p4StartEditSchedule(P4.modal.id));
+    drawButton('수정', DW / 2 - 130, my + 150, 110, 44, () => p4StartEditSchedule(P4.modal.id), -2);
     drawButton('삭제', DW / 2, my + 150, 110, 44, () => {
       appState.schedules = appState.schedules.filter(s => s.id !== P4.modal.id);
       rebuildTimetable(); P4.modal = null;
-    });
-    drawButton('취소', DW / 2 + 130, my + 150, 110, 44, () => { P4.modal = null; });
+    }, -2);
+    drawButton('취소', DW / 2 + 130, my + 150, 110, 44, () => { P4.modal = null; }, -2);
 
   } else if (P4.modal.type === 'delete') {
     const mw = 460, mh = 200, mx = DW / 2 - mw / 2, my = DH / 2 - mh / 2;
@@ -448,8 +461,8 @@ function p4DrawModal() {
     drawButton('예', DW / 2 - 80, my + 145, 110, 44, () => {
       appState.schedules = appState.schedules.filter(s => s.id !== P4.modal.id);
       rebuildTimetable(); P4.modal = null;
-    });
-    drawButton('아니오', DW / 2 + 80, my + 145, 110, 44, () => { P4.modal = null; });
+    }, -2);
+    drawButton('아니오', DW / 2 + 80, my + 145, 110, 44, () => { P4.modal = null; }, -2);
 
   } else if (P4.modal.type === 'difficulty') {
     const mw = 520, mh = 200, mx = DW / 2 - mw / 2, my = DH / 2 - mh / 2;
@@ -466,7 +479,7 @@ function p4DrawModal() {
       push(); rectMode(CENTER); noStroke();
       fill(over ? COLORS.slotBeige : COLORS.btn); rect(ox, oy, ow, oh, 10);
       fill(over ? '#fff' : COLORS.ink); textFont(fontHeading); textSize(16); textAlign(CENTER, CENTER);
-      text(o, ox, oy); pop();
+      text(o, ox, oy - 2); pop();
       _buttons.push({ x: ox - ow / 2, y: oy - oh / 2, w: ow, h: oh, onClick: () => {
         appState.dayDifficulty = o;
         P4.modal = null;

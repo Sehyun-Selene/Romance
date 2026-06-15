@@ -31,13 +31,21 @@ function drawPage3() {
     const cy = startY + row * (ch + gy) + ch / 2;
     const key = tagKeyOf(chips[i]);
     const sel = appState.selectedTags.includes(key);
+    const hover = mouseInRect(cx - cw / 2, cy - ch / 2, cw, ch);
+    const hw = hover ? cw * 1.05 : cw;
+    const hh = hover ? ch * 1.05 : ch;
     push();
     rectMode(CENTER); noStroke();
+    if (hover) {
+      drawingContext.shadowColor = 'rgba(180,55,55,0.35)';
+      drawingContext.shadowBlur = 18;
+    }
     fill(sel ? COLORS.slotBeige : COLORS.btn);
-    rect(cx, cy, cw, ch, 14);
+    rect(cx, cy, hw, hh, 14);
+    drawingContext.shadowBlur = 0;
     fill(sel ? '#fff' : COLORS.ink);
     textFont(fontHeading); textSize(20); textAlign(CENTER, CENTER);
-    text(chips[i], cx, cy);
+    text(chips[i], cx, cy - 2);
     pop();
     _buttons.push({
       x: cx - cw / 2, y: cy - ch / 2, w: cw, h: ch,
@@ -59,6 +67,6 @@ function drawPage3() {
 
   // 3개 이상 선택 시에만 버튼 표시
   if (appState.selectedTags.length >= 3) {
-    drawButton('다음으로', DW / 2, 650, 150, 46, () => goTo(4));
+    drawButton('다음으로', DW / 2, 650, 150, 46, () => goTo(4), -2);
   }
 }

@@ -39,6 +39,17 @@ function setup() {
   lastInputAt = millis();
   if (typeof p2Init === 'function') p2Init();
   if (typeof p4Init === 'function') p4Init();
+
+  // 텍스트 입력 칸에 포커스가 있는 상태에서 캔버스(버튼 등)를 클릭하면,
+  // 포커스 이동(blur)이 클릭과 같은 프레임에 겹쳐 그 클릭이 버튼 동작으로
+  // 이어지지 않는 경우가 있다. mousedown 캡처 단계에서 입력 필드를 먼저
+  // blur 시켜 두면 캔버스로 가는 클릭이 정상적으로 처리된다.
+  document.addEventListener('pointerdown', (e) => {
+    const ae = document.activeElement;
+    if (ae && ae !== e.target && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA') && !ae.contains(e.target)) {
+      ae.blur();
+    }
+  }, true);
 }
 
 function windowResized() { fitCanvas(); }
@@ -156,7 +167,8 @@ function drawPage1() {
   textAlign(CENTER, CENTER);
   fill(COLORS.ink);
   // 제목: 한글은 김대건체, 한자는 시스템 serif(한자 글리프 보유)로 혼합
-  const ty = DH / 2 - 60;
+  const yOff = 30; // 전체 콘텐츠를 살짝 위로 이동
+  const ty = DH / 2 - 60 - yOff;
   const kor = '일일산수', han = ' (一日山水)';
   textFont(fontTitle); textSize(64);
   const wKor = textWidth(kor);
@@ -170,11 +182,11 @@ function drawPage1() {
 
   textAlign(CENTER, CENTER);
   textFont(fontHeading); textSize(26); fill(COLORS.inkSoft);
-  text('하루의 빈 시간을 낭만으로 채워보세요', DW / 2, DH / 2 + 8);
+  text('하루의 빈 시간을 낭만으로 채워보세요', DW / 2, DH / 2 + 8 - yOff);
   pop();
-  drawButton('시작하기', DW / 2, DH / 2 + 92, 150, 54, () => goTo(2));
+  drawButton('시작하기', DW / 2, DH / 2 + 92 - yOff, 150, 54, () => goTo(2), -2);
   // B-1: 엽서집 바로가기
-  drawButton('엽서집 보기', DW / 2, DH / 2 + 158, 150, 44, () => goTo(8));
+  drawButton('엽서집 보기', DW / 2, DH / 2 + 158 - yOff, 150, 54, () => goTo(8), -2);
 }
 
 // drawPage2/3 → src/pages/p2_nickname.js, p3_tags.js
@@ -185,7 +197,7 @@ function drawPage1() {
 
 // ── 버튼 헬퍼 (그리기 + 이번 프레임 클릭 영역 등록) ──
 let _buttons = [];
-function drawButton(label, cx, cy, w, h, onClick) {
+function drawButton(label, cx, cy, w, h, onClick, textYOffset = 0) {
   const over = mouseInRect(cx - w / 2, cy - h / 2, w, h);
   push();
   noStroke();
@@ -196,7 +208,7 @@ function drawButton(label, cx, cy, w, h, onClick) {
   textFont(fontHeading);
   textSize(18);
   textAlign(CENTER, CENTER);
-  text(label, cx, cy);
+  text(label, cx, cy + textYOffset);
   pop();
   _buttons.push({ x: cx - w / 2, y: cy - h / 2, w, h, onClick });
 }
@@ -286,8 +298,15 @@ function drawIdleCountdown() {
   pop();
 }
 
-function mousePressed() {
+function mousePressed(e) {
   registerInput();
+  // 텍스트 입력 후 곧바로 클릭하면 mouseX/Y 갱신이 한 입력만큼 지연되어
+  // 첫 클릭이 무시되는 경우가 있어, 이벤트의 실제 좌표로 보정한다.
+  if (e && mainCanvas) {
+    const rect = mainCanvas.elt.getBoundingClientRect();
+    mouseX = (e.clientX - rect.left) * (DW / rect.width);
+    mouseY = (e.clientY - rect.top) * (DH / rect.height);
+  }
   for (const b of _devNav) if (mouseInRect(b.x, b.y, b.w, b.h)) { b.fn(); return; }
   for (let i = _buttons.length - 1; i >= 0; i--) {
     const b = _buttons[i];
@@ -317,6 +336,10 @@ function keyPressed() {
       P8.modal = null;
       P8.page = 0;
     }
+    return false;
+  }
+  if (appState.screen === 4 && P4.modal?.type === 'addSchedule' && keyCode === ENTER) {
+    p4AddSchedule();
     return false;
   }
   if (key === 'a' || key === 'A') showAssetPanel = !showAssetPanel;
