@@ -40,6 +40,11 @@ function setup() {
   if (typeof p2Init === 'function') p2Init();
   if (typeof p4Init === 'function') p4Init();
 
+  // 음악 초기 볼륨 설정 (바로 재생하진 않고 대기)
+  if (bgMusic) {
+    bgMusic.setVolume(0.5); // 0.0(묵음) ~ 1.0(최대) 사이로 조절 가능
+  }
+
   // 텍스트 입력 칸에 포커스가 있는 상태에서 캔버스(버튼 등)를 클릭하면,
   // 포커스 이동(blur)이 클릭과 같은 프레임에 겹쳐 그 클릭이 버튼 동작으로
   // 이어지지 않는 경우가 있다. mousedown 캡처 단계에서 입력 필드를 먼저

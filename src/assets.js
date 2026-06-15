@@ -7,6 +7,7 @@
 
 const IMG_DIR = '이미지 모음';
 const FONT_DIR = '글꼴 모음';
+const AUDIO_DIR = '음악 모음';
 
 // 폰트 (역할별)
 let fontTitle;     // 솔뫼 김대건 — 메인 타이틀(최대)
@@ -16,6 +17,7 @@ let fontBody;      // MapoFlowerIsland — 본문 작은 글씨
 // 배경
 let bgMain;        // 메인페이지 배경
 let bgPostcard;    // 엽서 기본배경 (2~8p 공통 + 엽서 바탕)
+let bgMusic;       // 배경 음악 추가
 
 // 산 13개 (키 = 파일명 stem), 토끼 3개
 const mountains = {};                 // { "산2-1": p5.Image, ... }
@@ -41,6 +43,7 @@ function preloadAssets() {
 
   bgMain     = loadImage(`${IMG_DIR}/메인페이지배경.png`);
   bgPostcard = loadImage(`${IMG_DIR}/엽서 기본배경.png`);
+  bgMusic = loadSound(`${AUDIO_DIR}/calmwalk.mp3`);
 
   for (const k of MOUNTAIN_KEYS) mountains[k] = loadImage(`${IMG_DIR}/${k}.png`);
   rabbits.still = loadImage(`${IMG_DIR}/토끼1.png`);  // 정지

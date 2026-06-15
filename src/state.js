@@ -55,4 +55,8 @@ function resetSession() {
 function goTo(screen) {
   appState.screen = screen;
   if (typeof p4CloseDropdown === 'function') p4CloseDropdown();  // P4 드롭다운 열린 채 이탈 방지
+  
+  if (bgMusic && !bgMusic.isPlaying()) {
+    bgMusic.loop();
+  }; //어떤 버튼이든 눌러서 페이지가 이동할 때 음악이 재생 중이 아니라면 반복 재생 시작
 }
