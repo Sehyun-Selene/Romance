@@ -44,6 +44,7 @@ function preloadAssets() {
   bgMain     = loadImage(`${IMG_DIR}/메인페이지배경.png`);
   bgPostcard = loadImage(`${IMG_DIR}/엽서 기본배경.png`);
   bgMusic = loadSound(`${AUDIO_DIR}/calmwalk.mp3`);
+  effMusic = loadSound(`${AUDIO_DIR}/dundun.mp3`);
 
   for (const k of MOUNTAIN_KEYS) mountains[k] = loadImage(`${IMG_DIR}/${k}.png`);
   rabbits.still = loadImage(`${IMG_DIR}/토끼1.png`);  // 정지

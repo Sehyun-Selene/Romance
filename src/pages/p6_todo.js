@@ -111,7 +111,26 @@ function drawPage6() {
     goTo(5);
   });
 
-  if (romanceAllChecked) drawButton('오늘의 엽서 만들기', DW - 185, BTN_Y, 210, 40, () => goTo(7));
+  if (romanceAllChecked) drawButton('오늘의 엽서 만들기', DW - 185, BTN_Y, 210, 40, () => {
+    // 1. 효과음이 있다면 재생
+    if (effMusic) {
+      effMusic.play();
+    }
+
+    // 2. 배경음악 볼륨을 0.2초 동안 0.3(30%)으로 부드럽게 줄임
+    if (bgMusic && bgMusic.isPlaying()) {
+      bgMusic.setVolume(0.3, 0.2); 
+
+      // 3. 4초(4000ms) 뒤에 원래 볼륨(1.0)으로 0.5초 동안 부드럽게 복구
+      setTimeout(() => {
+        if (bgMusic && bgMusic.isPlaying()) {
+          bgMusic.setVolume(1.0, 0.5); 
+        }
+      }, 4000);
+    }
+
+    goTo(7);
+    });
   else {
     push();
     noStroke(); fill(COLORS.btn); rectMode(CENTER); rect(DW - 185, BTN_Y, 210, 40, 8);
