@@ -396,8 +396,8 @@ function p4DrawTimetable(interactive) {
 
 // ── 헬퍼 ──
 function p4Panel(x, y, w, h) {
-  push(); noStroke(); fill('#f4f0e8'); rect(x, y, w, h, 14);
-  noFill(); stroke(COLORS.line); strokeWeight(1.2); rect(x, y, w, h, 14); pop();
+  push(); noStroke(); fill('#f4f0e8'); rect(x, y, w, h, 8);
+  noFill(); stroke(COLORS.line); strokeWeight(0.7); rect(x, y, w, h, 8); pop();
 }
 function p4Pill(label, x, y, w) {
   push();
