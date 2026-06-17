@@ -100,16 +100,24 @@ function draw() {
 
 // ── 공통 UI ──
 function drawHeader() {
-  // 좌상단 로고 + 프로그램 제목 (2~8p). 클릭 시 처음 화면으로.
+  // 좌상단 로고 이미지 + '일일산수' 텍스트. 클릭 시 처음 화면으로.
+  const labelX = 78, headerY = 42, labelH = 20;
+  if (imgHeaderLogo) {
+    const lh = 52;
+    const lw = imgHeaderLogo.width * (lh / imgHeaderLogo.height);
+    imageMode(CENTER);
+    image(imgHeaderLogo, labelX - lw / 2 + 20, headerY + 5, lw, lh);
+    imageMode(CORNER);
+  }
   push();
   fill(COLORS.ink);
   textFont(fontHeading);
-  textSize(20);
+  textSize(labelH);
   textAlign(LEFT, CENTER);
-  text('일일산수', 78, 42);
+  text('일일산수', labelX, headerY);
   pop();
-  // 헤더 클릭 → 처음 화면으로 (PRD §7: 모든 페이지에 처음으로 경로)
-  _buttons.push({ x: 36, y: 22, w: 160, h: 40, onClick: () => { resetSession(); goTo(1); } });
+  // 로고 + 텍스트 영역 전체 클릭 → 처음 화면으로
+  _buttons.push({ x: 36, y: 22, w: 200, h: 40, onClick: () => { resetSession(); goTo(1); } });
 }
 
 function centerTitle(str, y, size = 34) {
@@ -171,19 +179,20 @@ function drawPage1() {
   push();
   textAlign(CENTER, CENTER);
   fill(COLORS.ink);
-  // 제목: 한글은 김대건체, 한자는 시스템 serif(한자 글리프 보유)로 혼합
   const yOff = 30; // 전체 콘텐츠를 살짝 위로 이동
   const ty = DH / 2 - 60 - yOff;
-  const kor = '일일산수', han = ' (一日山水)';
-  textFont(fontTitle); textSize(64);
-  const wKor = textWidth(kor);
-  textFont('serif'); textSize(40);
-  const wHan = textWidth(han);
-  const startX = DW / 2 - (wKor + wHan) / 2;
-  textAlign(LEFT, CENTER);
+  // 한자 이미지 ('일일산수' 텍스트 위)
+  if (imgHanjaTitle) {
+    const ih = 28;
+    const iw = imgHanjaTitle.width * (ih / imgHanjaTitle.height);
+    imageMode(CENTER);
+    image(imgHanjaTitle, DW / 2, ty - 54, iw, ih);
+    imageMode(CORNER);
+  }
+  // 한글 제목
+  textAlign(CENTER, CENTER);
   fill(COLORS.ink);
-  textFont(fontTitle); textSize(64); text(kor, startX, ty);
-  textFont('serif'); textSize(40); text(han, startX + wKor, ty + 4);
+  textFont(fontTitle); textSize(64); text('일일산수', DW / 2, ty);
 
   textAlign(CENTER, CENTER);
   textFont(fontHeading); textSize(26); fill(COLORS.inkSoft);

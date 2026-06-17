@@ -17,6 +17,8 @@ let fontBody;      // MapoFlowerIsland — 본문 작은 글씨
 // 배경
 let bgMain;        // 메인페이지 배경
 let bgPostcard;    // 엽서 기본배경 (2~8p 공통 + 엽서 바탕)
+let imgHanjaTitle; // 일일산수_한자 — 메인 한자 이미지
+let imgHeaderLogo; // 상단로고 — 헤더 좌측 로고
 let bgMusic;       // 배경 음악 추가
 
 // 산 13개 (키 = 파일명 stem), 토끼 3개
@@ -43,6 +45,8 @@ function preloadAssets() {
 
   bgMain     = loadImage(`${IMG_DIR}/메인페이지배경.png`);
   bgPostcard = loadImage(`${IMG_DIR}/엽서 기본배경.png`);
+  imgHanjaTitle = loadImage(`${IMG_DIR}/일일산수_한자.png`);
+  imgHeaderLogo = loadImage(`${IMG_DIR}/상단로고.png`);
   bgMusic = loadSound(`${AUDIO_DIR}/calmwalk.mp3`);
 
   for (const k of MOUNTAIN_KEYS) mountains[k] = loadImage(`${IMG_DIR}/${k}.png`);
