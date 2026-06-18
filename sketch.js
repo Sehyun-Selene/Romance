@@ -352,8 +352,16 @@ function keyPressed() {
     }
     return false;
   }
+  if (appState.screen === 2 && keyCode === ENTER) {
+    p2Confirm();
+    return false;
+  }
   if (appState.screen === 4 && P4.modal?.type === 'addSchedule' && keyCode === ENTER) {
     p4AddSchedule();
+    return false;
+  }
+  if (appState.screen === 5 && keyCode === ENTER) {
+    p5AddMission();
     return false;
   }
   if (key === 'a' || key === 'A') showAssetPanel = !showAssetPanel;

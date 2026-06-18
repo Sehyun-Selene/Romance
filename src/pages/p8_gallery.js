@@ -9,6 +9,22 @@ const P8 = {
 
 function p8Reset() { P8.page = 0; P8.modal = null; }
 
+// 페이지 이전/다음 버튼 — 폰트에 ◀/▶ 글리프가 없어 깨져 보이는 문제를 피하려고
+// 텍스트 대신 삼각형을 직접 그린다 (drawDevNav의 화살표와 동일한 방식).
+function p8ArrowButton(cx, cy, w, h, dir, onClick) {
+  const over = mouseInRect(cx - w / 2, cy - h / 2, w, h);
+  push();
+  noStroke(); fill(over ? COLORS.slotBeige : COLORS.btn);
+  rectMode(CENTER); rect(cx, cy, w, h, 8);
+  fill(over ? '#fff' : COLORS.ink);
+  const tw = 7, th = 9;
+  if (dir < 0) triangle(cx + tw / 2, cy - th, cx + tw / 2, cy + th, cx - tw / 2, cy);
+  else triangle(cx - tw / 2, cy - th, cx - tw / 2, cy + th, cx + tw / 2, cy);
+  rectMode(CORNER);
+  pop();
+  _buttons.push({ x: cx - w / 2, y: cy - h / 2, w, h, onClick });
+}
+
 // ── 메인 렌더 ─────────────────────────────────────────────────────
 function drawPage8() {
   image(bgPostcard, 0, 0, DW, DH);
@@ -43,8 +59,8 @@ function drawPage8() {
     fill(COLORS.ink); textFont(fontBody); textSize(14); textAlign(CENTER, CENTER);
     text(`${P8.page + 1} / ${pages} 페이지`, DW / 2, py);
     pop();
-    drawButton('◀', DW / 2 - 100, py, 60, 36, () => { if (P8.page > 0) P8.page--; });
-    drawButton('▶', DW / 2 + 100, py, 60, 36, () => { if (P8.page < pages - 1) P8.page++; });
+    p8ArrowButton(DW / 2 - 100, py, 60, 36, -1, () => { if (P8.page > 0) P8.page--; });
+    p8ArrowButton(DW / 2 + 100, py, 60, 36, 1, () => { if (P8.page < pages - 1) P8.page++; });
   }
 
   drawButton('처음 화면으로', DW / 2, 740, 180, 44, () => { resetSession(); goTo(1); });
@@ -137,8 +153,11 @@ function p8DrawModal() {
     if (info.quote) {
       const q = info.quote;
       const qt = q.type === '시조' && q.source ? `${q.text} (${q.source})` : q.text;
-      fill(COLORS.inkSoft);
-      drawMixedText(window, qt, tx, min(ly + 8, cy0 + ch - 120), tw, 12, fontBody, 17);
+      const qy = min(ly + 14, cy0 + ch - 140);
+      fill(COLORS.ink); textFont(fontHeading); textSize(14); textAlign(LEFT, TOP);
+      text('오늘의 글귀', tx, qy);
+      fill('#4a4138');
+      drawMixedText(window, qt, tx, qy + 24, tw, 14, fontBody, 19);
     }
   } else {
     fill(COLORS.inkSoft); textFont(fontBody); textSize(13); textAlign(LEFT, TOP);

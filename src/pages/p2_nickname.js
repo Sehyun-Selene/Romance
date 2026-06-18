@@ -70,10 +70,12 @@ function drawPage2() {
     pop();
   }
 
-  drawButton('다음으로', DW / 2, 510, 150, 46, () => {
-    const v = (P2.inEl ? P2.inEl.value() : '').trim();
-    if (!v) { P2.warn = true; P2.warnAt = millis(); return; }
-    appState.nickname = v;
-    goTo(3);
-  }, -2);
+  drawButton('다음으로', DW / 2, 510, 150, 46, p2Confirm, -2);
+}
+
+function p2Confirm() {
+  const v = (P2.inEl ? P2.inEl.value() : '').trim();
+  if (!v) { P2.warn = true; P2.warnAt = millis(); return; }
+  appState.nickname = v;
+  goTo(3);
 }
