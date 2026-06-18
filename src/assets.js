@@ -47,8 +47,12 @@ function preloadAssets() {
   bgPostcard = loadImage(`${IMG_DIR}/엽서 기본배경.png`);
   imgHanjaTitle = loadImage(`${IMG_DIR}/일일산수_한자.png`);
   imgHeaderLogo = loadImage(`${IMG_DIR}/상단로고.png`);
-  bgMusic = loadSound(`${AUDIO_DIR}/calmwalk.mp3`);
-  effMusic = loadSound(`${AUDIO_DIR}/dundun.mp3`);
+  // view.html(엽서 공유 뷰)은 p5.sound를 로드하지 않으므로, loadSound 부재 시
+  // 건너뛴다 — 이게 없으면 예외가 던져져 이후 산/토끼 이미지 로딩이 전부 중단된다.
+  if (typeof loadSound === 'function') {
+    bgMusic = loadSound(`${AUDIO_DIR}/calmwalk.mp3`);
+    effMusic = loadSound(`${AUDIO_DIR}/dundun.mp3`);
+  }
 
   for (const k of MOUNTAIN_KEYS) mountains[k] = loadImage(`${IMG_DIR}/${k}.png`);
   rabbits.still = loadImage(`${IMG_DIR}/토끼1.png`);  // 정지
