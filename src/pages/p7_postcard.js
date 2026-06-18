@@ -75,9 +75,8 @@ function p7RenderBuffer(g) {
   g.stroke('#bdb4a4'); g.strokeWeight(0.8);
   g.line(16, 357, PG_W - 16, 357);
 
-  // 날짜 + 닉네임 + 글귀 (어두운 색으로)
+  // 날짜 + 닉네임 (어두운 색으로)
   g.noStroke();
-  const q    = P6.quote;
   const nick = appState.nickname || '';
 
   g.textFont(fontBody); g.textSize(12); g.fill('#4a4138');
@@ -89,12 +88,8 @@ function p7RenderBuffer(g) {
     g.fill('#4a4138'); g.textSize(12);
     g.text(`— ${nick}`, PG_W - 18, 362);
   }
-
-  if (q) {
-    const qText = q.type === '시조' && q.source ? `${q.text} (${q.source})` : q.text;
-    g.fill('#6b5c4a');
-    drawMixedText(g, qText, 18, 378, PG_W - 36, 11, fontBody, 15);   // 한자 깨짐 방지
-  }
+  // 글귀는 이 버퍼에 굽지 않음 — JPEG로 저장될 때 작은 글자가 깨져 보이는 문제가 있어
+  // drawPage7()에서 실제 캔버스 텍스트로 별도 오버레이한다.
 }
 
 // ── 메인 렌더 ─────────────────────────────────────────────────────
@@ -111,6 +106,19 @@ function drawPage7() {
   const ex    = DW / 2 - dispW / 2;
   const ey    = 120;
   if (P7.buf) image(P7.buf, ex, ey, dispW, dispH);
+
+  // 글귀는 저장용 버퍼(JPEG)에 굽지 않고 실제 캔버스 텍스트로 그 위에 그린다 — 작은 글자가
+  // JPEG 압축으로 깨지는 문제를 피하기 위함 (엽서집 확대 모달은 share에서 디코드한
+  // 텍스트를 별도로 그림, p8_gallery.js 참고).
+  const q = P6.quote;
+  if (q) {
+    const sc = dispW / PG_W;
+    const qText = q.type === '시조' && q.source ? `${q.text} (${q.source})` : q.text;
+    push();
+    fill('#6b5c4a');
+    drawMixedText(window, qText, ex + 18 * sc, ey + 378 * sc, (PG_W - 36) * sc, 11 * sc, fontBody, 15 * sc);
+    pop();
+  }
 
   // 하단 버튼 3개
   const BY = ey + dispH + 36;

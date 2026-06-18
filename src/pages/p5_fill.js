@@ -282,10 +282,9 @@ function p5DrawRightPanel() {
   drawButton('추가하기', px + pw / 2, py + ph - 34, 150, 46, p5AddMission, -2);
 }
 
-// ── F-1: 후보 새로고침 (직전 후보는 used에서 풀어 재추천 가능하게) ──
+// ── F-1: 후보 새로고침 (직전 후보는 used로 유지 → 다른 미션이 나오게) ──
 function p5Refresh() {
   if (!P5.selectedBlock) return;
-  for (const c of P5.candidates) { if (!c.isRest) appState.usedMissionIds.delete(c.id); }
   const startMin = appState.timetable[P5.selectedBlock.slotIndices[0]].minutes;
   P5.candidates = recommendMissions(min(P5.selectedBlock.durationMin, 180), startMin);
   P5.candidateCache[p5BlockKey(P5.selectedBlock)] = P5.candidates.slice();
