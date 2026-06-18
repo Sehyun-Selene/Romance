@@ -250,10 +250,14 @@ function p5DrawRightPanel() {
   pop();
   _buttons.push({ x: rfx - 20, y: rfy - 20, w: 40, h: 40, onClick: p5Refresh });
 
-  const cardW = pw - 60, cardH = 84, cardX = px + 30;
+  const cardW = pw - 60, baseCardH = 84, cardX = px + 30, lh = 22;
+  let cy = py + 65;
   for (let k = 0; k < P5.candidates.length; k++) {
     const m = P5.candidates[k];
-    const cy = py + 65 + k * (cardH + 10);
+    textFont(fontHeading); textSize(15);
+    const lines = p5WrapLines(m.text, cardW - 70);
+    // 텍스트가 한 줄에 안 들어가면 칸 높이를 늘려 잘리지 않게 함
+    const cardH = lines.length > 1 ? baseCardH + (lines.length - 1) * lh : baseCardH;
     const sel = P5.chosen === k;
     noStroke(); fill(sel ? COLORS.slotBeige : COLORS.slotEmpty);
     if (!sel && P5.chosen !== null) fill(220, 215, 205, 160);
@@ -267,12 +271,11 @@ function p5DrawRightPanel() {
     const fa = (!sel && P5.chosen !== null) ? 130 : 255;
     fill(red(color(COLORS.ink)), green(color(COLORS.ink)), blue(color(COLORS.ink)), fa);
     textFont(fontHeading); textSize(15); textAlign(LEFT, CENTER);
-    const lines = p5WrapLines(m.text, cardW - 70);
-    const lh = 22;
     let ty = cy + cardH / 2 - (lines.length - 1) * lh / 2;
     for (const ln of lines) { text(ln, cardX + 48, ty); ty += lh; }
 
     _buttons.push({ x: cardX, y: cy, w: cardW, h: cardH, onClick: () => { P5.chosen = k; } });
+    cy += cardH + 10;
   }
   pop();
 
