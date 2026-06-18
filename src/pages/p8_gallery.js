@@ -131,6 +131,19 @@ function p8DrawModal() {
   if (P8.imgCache[item.id]) image(P8.imgCache[item.id], ex, ey, ew, eh);
   noFill(); stroke(COLORS.line); strokeWeight(1.2); rect(ex, ey, ew, eh, 8);
 
+  // 글귀: 이미지(JPEG)에 굽지 않고, 이미지 하단(날짜/이름 바로 아래) 위에 실제 텍스트로
+  // 오버레이한다 — 작은 글자가 JPEG 압축으로 깨지는 문제를 피하면서도 엽서 이미지
+  // 아래쪽에 보이도록 함.
+  if (info && info.quote) {
+    const q = info.quote;
+    const qt = q.type === '시조' && q.source ? `${q.text} (${q.source})` : q.text;
+    const sc = ew / PG_W;
+    push();
+    noStroke(); fill('#6b5c4a');
+    drawMixedText(window, qt, ex + 18 * sc, ey + 378 * sc, (PG_W - 36) * sc, 11 * sc, fontBody, 15 * sc);
+    pop();
+  }
+
   // 오른쪽 텍스트
   const tx = ex + ew + 40, tw = cx0 + cw - tx - 36;
   noStroke();
@@ -149,15 +162,6 @@ function p8DrawModal() {
       for (const ln of lines) { text(ln, tx, ly); ly += 19; }
       ly += 4;
       if (ly > cy0 + ch - 130) break;
-    }
-    if (info.quote) {
-      const q = info.quote;
-      const qt = q.type === '시조' && q.source ? `${q.text} (${q.source})` : q.text;
-      const qy = min(ly + 14, cy0 + ch - 140);
-      fill(COLORS.ink); textFont(fontHeading); textSize(14); textAlign(LEFT, TOP);
-      text('오늘의 글귀', tx, qy);
-      fill('#4a4138');
-      drawMixedText(window, qt, tx, qy + 24, tw, 14, fontBody, 19);
     }
   } else {
     fill(COLORS.inkSoft); textFont(fontBody); textSize(13); textAlign(LEFT, TOP);
